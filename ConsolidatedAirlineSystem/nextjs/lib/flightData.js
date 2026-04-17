@@ -22,6 +22,22 @@ export const FLIGHTS = [
 
 export const findFlightById = (id) => FLIGHTS.find(f => f.id === id)
 
+export const CLEANUP_TASKS = [
+  { key: 'lavatory_front',  label: 'Front Lavatory',                category: 'Toilets' },
+  { key: 'lavatory_rear',   label: 'Rear Lavatory',                 category: 'Toilets' },
+  { key: 'lavatory_mid',    label: 'Mid-Cabin Lavatory',            category: 'Toilets' },
+  { key: 'seat_surfaces',   label: 'Seat Surfaces',                 category: 'Seats' },
+  { key: 'tray_tables',     label: 'Tray Tables',                   category: 'Seats' },
+  { key: 'seat_pockets',    label: 'Seat Pockets',                  category: 'Seats' },
+  { key: 'headrests',       label: 'Headrest Covers',               category: 'Seats' },
+  { key: 'aisle_vacuum',    label: 'Aisle Vacuuming',               category: 'Floors' },
+  { key: 'galley_floor',    label: 'Galley / Lavatory Floor Mop',   category: 'Floors' },
+  { key: 'overhead_bins',   label: 'Overhead Bins',                 category: 'Overhead' },
+  { key: 'window_shades',   label: 'Window Shades',                 category: 'Overhead' },
+  { key: 'galley_surfaces', label: 'Galley Surfaces',               category: 'Galley' },
+  { key: 'waste_removal',   label: 'Waste Removal',                 category: 'Galley' },
+]
+
 // Checklist items required per flight (based on 100 passengers)
 export function getChecklist(flight) {
   const { meals } = flight

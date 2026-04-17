@@ -1,6 +1,6 @@
 import { getSession, unauthorized, notFound, badRequest } from '@/lib/auth'
-import { findFlightById, getChecklist } from '@/lib/flightData'
-import { getCateringLog, addCateringLog } from '@/lib/store'
+import { findFlightById, CLEANUP_TASKS } from '@/lib/flightData'
+import { getCleanupLog, addCleanupLog } from '@/lib/store'
 import { NextResponse } from 'next/server'
 
 export async function GET(request, { params }) {
@@ -12,8 +12,8 @@ export async function GET(request, { params }) {
 
   return NextResponse.json({
     flight,
-    checklist: getChecklist(flight),
-    log: getCateringLog(flight.id) ?? null,
+    tasks: CLEANUP_TASKS,
+    log: getCleanupLog(flight.id) ?? null,
   })
 }
 
@@ -24,20 +24,18 @@ export async function POST(request, { params }) {
   const flight = findFlightById(params.flightId)
   if (!flight) return notFound()
 
-  const { items } = await request.json()
-  if (!items) return badRequest('items required')
-
-  const checklist = getChecklist(flight)
-  const shortfall = checklist.filter(c => (items[c.key] ?? 0) < c.required)
-  if (shortfall.length > 0) {
-    return NextResponse.json(
-      { message: 'Insufficient quantities', shortfall: shortfall.map(c => ({ label: c.label, required: c.required, loaded: items[c.key] ?? 0 })) },
-      { status: 422 }
-    )
+  let tasks
+  try {
+    const body = await request.json()
+    tasks = body.tasks
+  } catch {
+    return badRequest('Invalid request body')
   }
 
+  if (tasks === undefined || tasks === null) return badRequest('tasks required')
+
   try {
-    const log = addCateringLog({ flightId: flight.id, agentId: session.sub, items })
+    const log = addCleanupLog({ flightId: flight.id, agentId: session.sub, tasks })
     return NextResponse.json(log, { status: 201 })
   } catch (err) {
     return NextResponse.json({ message: err.message }, { status: 500 })
