@@ -35,3 +35,13 @@ export const complianceService = {
   getReport:    ()       => fetcher('/api/shifts/compliance'),
   getUserReport: (userId) => fetcher(`/api/shifts/compliance/${userId}`),
 }
+
+export const schedulingService = {
+  getTemplates:  ()                     => fetcher('/api/scheduling/templates'),
+  getRosters:    ()                     => fetcher('/api/scheduling/roster'),
+  getRoster:     (id)                   => fetcher(`/api/scheduling/roster/${id}`),
+  preview:       (startDate, endDate)   => fetcher('/api/scheduling/roster', { method: 'POST', body: JSON.stringify({ startDate, endDate, preview: true }) }),
+  saveDraft:     (name, startDate, endDate) => fetcher('/api/scheduling/roster', { method: 'POST', body: JSON.stringify({ name, startDate, endDate, preview: false }) }),
+  publish:       (id, force = false)    => fetcher(`/api/scheduling/roster/${id}/publish`, { method: 'POST', body: JSON.stringify({ force }) }),
+  deleteRoster:  (id)                   => fetcher(`/api/scheduling/roster/${id}`, { method: 'DELETE' }),
+}
