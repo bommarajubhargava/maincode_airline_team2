@@ -3,5 +3,5 @@
   "outputDirectory": ".next",
   "installCommand": "npm install",
   "framework": "nextjs",
-  "rootDirectory": "nextjs"
+  "rootDirectory": "ConsolidatedAirlineSystem/nextjs"
 }
