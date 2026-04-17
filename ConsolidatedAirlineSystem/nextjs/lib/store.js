@@ -120,17 +120,90 @@ function generateShifts() {
   return shifts
 }
 
-const { count } = db.prepare('SELECT COUNT(*) as count FROM shifts').get()
+// ── Compliance violation scenarios (seeded for demo purposes) ─────────────────
+// Each scenario deliberately violates one or more collective-agreement rules so
+// the Compliance tab has realistic data to display from day one.
+//
+// Scenarios:
+//   A  usr-001 Alice    – Insufficient rest (2 h gap, min 11 h)
+//   B  usr-002 Bob      – 7 consecutive working days (max 6)
+//   C  usr-003 Carol    – 63 h in 7-day window (hard cap 48 h) + overtime warning
+//   D  usr-004 David    – 84 h in 14-day fatigue window (threshold 60 h)
+//   E  usr-005 Emma     – 11 h shift (daily overtime warning > 8 h)
+//   F  usr-006 Frank    – 45 h in 7 days (weekly overtime warning > 40 h)
+
+function generateComplianceScenarios(today) {
+  const scenarios = []
+  let cx = 1
+  const nextId = () => `shft-cx${String(cx++).padStart(3, '0')}`
+
+  const ts = (offset, h) => {
+    const d = new Date(today)
+    d.setDate(today.getDate() + offset)
+    d.setHours(h, 0, 0, 0)
+    return d.toISOString()
+  }
+
+  const add = (userId, startOffset, startH, endOffset, endH, shiftType, location) => {
+    const startTime = ts(startOffset, startH)
+    const status    = new Date(startTime) < today ? 'Completed' : 'Scheduled'
+    scenarios.push({
+      id: nextId(), userId, shiftType, location, status, duty: 'General',
+      startTime,
+      endTime: ts(endOffset, endH),
+    })
+  }
+
+  // A: Insufficient Rest — Alice (usr-001)
+  // Night ends Day+2 at 06:00, Morning starts Day+2 at 08:00 → only 2 h rest
+  add('usr-001', 1, 22, 2,  6,  'Night',   'Gate B7')
+  add('usr-001', 2,  8, 2, 16,  'Morning', 'Terminal 1 - Check-in')
+
+  // B: 7 Consecutive Days — Bob (usr-002)
+  // Morning 06:00-14:00 for days +3 to +9 (7 straight days, max is 6)
+  for (let i = 3; i <= 9; i++) {
+    add('usr-002', i, 6, i, 14, 'Morning', 'Security Checkpoint')
+  }
+
+  // C: Weekly Hours > 48 h — Carol (usr-003)
+  // 7 days × 9 h = 63 h in rolling 7-day window (critical >48 h, warns at >40 h)
+  for (let i = 10; i <= 16; i++) {
+    add('usr-003', i, 7, i, 16, 'Morning', 'Terminal 3 - Boarding')
+  }
+
+  // D: 14-day Fatigue — David (usr-004)
+  // 14 shifts × 6 h = 84 h fatigue window (threshold 60 h)
+  for (let i = -6; i <= 7; i++) {
+    add('usr-004', i, 14, i, 20, 'Afternoon', 'VIP Lounge')
+  }
+
+  // E: Daily Overtime Warning — Emma (usr-005)
+  // Single 11 h shift (>8 h overtime threshold, <12 h hard cap → warning only)
+  add('usr-005', 2, 6, 2, 17, 'Morning', 'Customer Service Desk')
+
+  // F: Weekly Overtime Warning — Frank (usr-006)
+  // 5 days × 9 h = 45 h in rolling week (>40 h warning, <48 h hard cap)
+  for (let i = 3; i <= 7; i++) {
+    add('usr-006', i, 6, i, 15, 'Morning', 'Gate C12')
+  }
+
+  return scenarios
+}
+
+const { count }     = db.prepare('SELECT COUNT(*) as count FROM shifts').get()
 const { userCount } = db.prepare('SELECT COUNT(DISTINCT userId) as userCount FROM shifts').get()
-if (count === 0 || userCount < 15) {
+const { hasCx }     = db.prepare("SELECT COUNT(*) as hasCx FROM shifts WHERE id LIKE 'shft-cx%'").get()
+
+if (count === 0 || userCount < 15 || !hasCx) {
   db.exec('DELETE FROM shifts')
+  const today = new Date(); today.setHours(0, 0, 0, 0)
   const insert = db.prepare(
     'INSERT INTO shifts (id,userId,startTime,endTime,location,shiftType,status,duty) VALUES (?,?,?,?,?,?,?,?)'
   )
   const insertMany = db.transaction((rows) => {
     for (const r of rows) insert.run(r.id, r.userId, r.startTime, r.endTime, r.location, r.shiftType, r.status, r.duty)
   })
-  insertMany(generateShifts())
+  insertMany([...generateShifts(), ...generateComplianceScenarios(today)])
 }
 
 // ── Shifts ────────────────────────────────────────────────────────────────────

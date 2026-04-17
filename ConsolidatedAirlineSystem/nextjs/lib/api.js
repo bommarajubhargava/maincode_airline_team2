@@ -30,3 +30,8 @@ export const shiftService = {
   updateShift: (id, dto) =>
     fetcher(`/api/shifts/${id}`, { method: 'PUT', body: JSON.stringify(dto) }),
 }
+
+export const complianceService = {
+  getReport:    ()       => fetcher('/api/shifts/compliance'),
+  getUserReport: (userId) => fetcher(`/api/shifts/compliance/${userId}`),
+}
