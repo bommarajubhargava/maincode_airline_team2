@@ -1,13 +1,14 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
-import { shiftService } from '@/lib/api'
+import { shiftService, complianceService } from '@/lib/api'
 import ShiftCard from '@/components/ShiftCard'
 import RequestQueue from '@/components/RequestQueue'
+import CompliancePanel from '@/components/CompliancePanel'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
-const TABS = ['All Shifts', 'Requests', 'Staff List']
+const TABS = ['All Shifts', 'Requests', 'Staff List', 'Compliance']
 
 export default function ManagerPage() {
   const { user } = useAuth()
@@ -22,6 +23,8 @@ export default function ManagerPage() {
   const [filterStatus, setFilterStatus] = useState('All')
   const [editShift, setEditShift] = useState(null)
   const [editForm, setEditForm] = useState({})
+  const [compliance, setCompliance] = useState(null)
+  const [complianceLoading, setComplianceLoading] = useState(false)
 
   const fetchAll = async () => {
     setLoading(true)
@@ -32,7 +35,23 @@ export default function ManagerPage() {
     finally { setLoading(false) }
   }
 
+  const fetchCompliance = async () => {
+    setComplianceLoading(true)
+    try {
+      const report = await complianceService.getReport()
+      setCompliance(report)
+    } catch {
+      toast.error('Failed to load compliance report')
+    } finally {
+      setComplianceLoading(false)
+    }
+  }
+
   useEffect(() => { fetchAll() }, [])
+
+  useEffect(() => {
+    if (activeTab === 'Compliance' && !compliance) fetchCompliance()
+  }, [activeTab])
 
   const openEdit = (s) => {
     setEditShift(s)
@@ -74,6 +93,7 @@ export default function ManagerPage() {
             { label: 'Total Shifts', value: shifts.length, color: 'text-blue-700' },
             { label: 'Pending',      value: pendingCount,  color: 'text-amber-600' },
             { label: 'Staff',        value: users.length,  color: 'text-slate-700' },
+            { label: 'Violations',   value: compliance?.summary?.totalCritical ?? '—', color: compliance?.summary?.totalCritical > 0 ? 'text-red-600' : 'text-emerald-600' },
           ].map(s => (
             <div key={s.label} className="card py-3 px-5 text-center">
               <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
@@ -90,6 +110,9 @@ export default function ManagerPage() {
             {tab}
             {tab === 'Requests' && pendingCount > 0 && (
               <span className="ml-1.5 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{pendingCount}</span>
+            )}
+            {tab === 'Compliance' && compliance?.summary?.totalCritical > 0 && (
+              <span className="ml-1.5 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{compliance.summary.totalCritical}</span>
             )}
           </button>
         ))}
@@ -132,6 +155,14 @@ export default function ManagerPage() {
       )}
 
       {activeTab === 'Requests' && <RequestQueue requests={requests} onRefresh={fetchAll} />}
+
+      {activeTab === 'Compliance' && (
+        <CompliancePanel
+          data={compliance}
+          loading={complianceLoading}
+          onRefresh={fetchCompliance}
+        />
+      )}
 
       {activeTab === 'Staff List' && (
         <div className="card overflow-x-auto">
