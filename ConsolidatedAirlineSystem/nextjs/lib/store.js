@@ -53,6 +53,28 @@ db.exec(`
     tasksJson   TEXT NOT NULL,
     status      TEXT NOT NULL DEFAULT 'Completed'
   );
+
+  CREATE TABLE IF NOT EXISTS rosters (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    startDate   TEXT NOT NULL,
+    endDate     TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'Draft',
+    createdAt   TEXT NOT NULL,
+    createdBy   TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS roster_shifts (
+    id          TEXT PRIMARY KEY,
+    rosterId    TEXT NOT NULL,
+    userId      TEXT NOT NULL,
+    startTime   TEXT NOT NULL,
+    endTime     TEXT NOT NULL,
+    location    TEXT NOT NULL,
+    shiftType   TEXT NOT NULL,
+    duty        TEXT NOT NULL DEFAULT 'General',
+    status      TEXT NOT NULL DEFAULT 'Draft'
+  );
 `)
 
 // ── Migrate: add duty column if missing, then force reseed ───────────────────
@@ -301,4 +323,63 @@ export function addCleanupLog(data) {
     'INSERT INTO cleanup_logs (id,flightId,agentId,completedAt,tasksJson,status) VALUES (?,?,?,?,?,?)'
   ).run(id, data.flightId, data.agentId, completedAt, JSON.stringify(data.tasks), 'Completed')
   return getCleanupLog(data.flightId)
+}
+
+// ── Rosters ───────────────────────────────────────────────────────────────────
+
+export const getRosters = () =>
+  db.prepare('SELECT * FROM rosters ORDER BY createdAt DESC').all()
+
+export const findRosterById = (id) =>
+  db.prepare('SELECT * FROM rosters WHERE id = ?').get(id)
+
+export const getRosterShifts = (rosterId) =>
+  db.prepare('SELECT * FROM roster_shifts WHERE rosterId = ? ORDER BY startTime').all(rosterId)
+
+export function createRoster(data) {
+  const id        = `rst-${Date.now()}`
+  const createdAt = new Date().toISOString()
+  db.prepare(
+    `INSERT INTO rosters (id,name,startDate,endDate,status,createdAt,createdBy)
+     VALUES (?,?,?,?,'Draft',?,?)`
+  ).run(id, data.name, data.startDate, data.endDate, createdAt, data.createdBy)
+  return findRosterById(id)
+}
+
+export function saveRosterShifts(rosterId, shifts) {
+  db.prepare('DELETE FROM roster_shifts WHERE rosterId = ?').run(rosterId)
+  const insert = db.prepare(
+    `INSERT INTO roster_shifts (id,rosterId,userId,startTime,endTime,location,shiftType,duty,status)
+     VALUES (?,?,?,?,?,?,?,?,?)`
+  )
+  const insertAll = db.transaction((rows) => {
+    for (const r of rows)
+      insert.run(r.id, rosterId, r.userId, r.startTime, r.endTime, r.location, r.shiftType, r.duty ?? 'General', 'Draft')
+  })
+  insertAll(shifts)
+}
+
+export function publishRoster(rosterId) {
+  const roster = findRosterById(rosterId)
+  if (!roster) return null
+  const rosterShifts = getRosterShifts(rosterId)
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO shifts (id,userId,startTime,endTime,location,shiftType,status,duty)
+     VALUES (?,?,?,?,?,?,'Scheduled',?)`
+  )
+  const publish = db.transaction(() => {
+    for (const rs of rosterShifts) {
+      const newId = `shft-p${Date.now()}-${Math.random().toString(36).slice(2, 5)}`
+      insert.run(newId, rs.userId, rs.startTime, rs.endTime, rs.location, rs.shiftType, rs.duty)
+    }
+    db.prepare(`UPDATE rosters SET status = 'Published' WHERE id = ?`).run(rosterId)
+  })
+  publish()
+  return findRosterById(rosterId)
+}
+
+export function deleteRoster(id) {
+  db.prepare('DELETE FROM roster_shifts WHERE rosterId = ?').run(id)
+  const { changes } = db.prepare('DELETE FROM rosters WHERE id = ?').run(id)
+  return changes > 0
 }

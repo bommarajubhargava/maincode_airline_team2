@@ -5,10 +5,11 @@ import { shiftService, complianceService } from '@/lib/api'
 import ShiftCard from '@/components/ShiftCard'
 import RequestQueue from '@/components/RequestQueue'
 import CompliancePanel from '@/components/CompliancePanel'
+import SchedulingEngine from '@/components/SchedulingEngine'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
-const TABS = ['All Shifts', 'Requests', 'Staff List', 'Compliance']
+const TABS = ['All Shifts', 'Requests', 'Staff List', 'Compliance', 'Scheduling']
 
 export default function ManagerPage() {
   const { user } = useAuth()
@@ -163,6 +164,8 @@ export default function ManagerPage() {
           onRefresh={fetchCompliance}
         />
       )}
+
+      {activeTab === 'Scheduling' && <SchedulingEngine />}
 
       {activeTab === 'Staff List' && (
         <div className="card overflow-x-auto">
