@@ -5,13 +5,19 @@ import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, isToday
 const SHIFT_BG    = { Morning: 'bg-amber-100 text-amber-800', Afternoon: 'bg-sky-100 text-sky-800', Evening: 'bg-purple-100 text-purple-800', Night: 'bg-indigo-100 text-indigo-800' }
 const STATUS_MUTE = { Cancelled: 'opacity-40 line-through', Swapped: 'opacity-60 italic' }
 
-export default function ShiftCalendar({ shifts, onShiftClick }) {
+export default function ShiftCalendar({ shifts, onShiftClick, onDayClick }) {
   const [viewDate, setViewDate] = useState(new Date())
+  const [selectedDay, setSelectedDay] = useState(null)
   const days = eachDayOfInterval({ start: startOfMonth(viewDate), end: endOfMonth(viewDate) })
   const padding = startOfMonth(viewDate).getDay()
 
   const prev = () => setViewDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1))
   const next = () => setViewDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1))
+
+  const handleDayClick = (day) => {
+    setSelectedDay(day)
+    onDayClick?.(day)
+  }
 
   return (
     <div className="card">
@@ -31,15 +37,22 @@ export default function ShiftCalendar({ shifts, onShiftClick }) {
         {Array.from({ length: padding }).map((_, i) => <div key={`p${i}`} />)}
         {days.map(day => {
           const dayShifts = shifts.filter(s => isSameDay(new Date(s.startTime), day))
-          const today = isToday(day)
+          const todayFlag = isToday(day)
+          const isSelected = selectedDay && isSameDay(day, selectedDay)
           return (
-            <div key={day.toISOString()} className={`min-h-[72px] rounded-lg p-1.5 border transition-colors ${today ? 'border-blue-400 bg-blue-50' : 'border-slate-100 hover:border-slate-300 bg-white'}`}>
-              <p className={`text-xs font-semibold mb-1 ${today ? 'text-blue-700' : 'text-slate-500'}`}>{format(day, 'd')}</p>
+            <div
+              key={day.toISOString()}
+              onClick={() => handleDayClick(day)}
+              className={`min-h-[72px] rounded-lg p-1.5 border cursor-pointer transition-colors
+                ${isSelected  ? 'border-blue-500 bg-blue-100 ring-2 ring-blue-300'
+                : todayFlag   ? 'border-blue-400 bg-blue-50'
+                :               'border-slate-100 hover:border-slate-300 bg-white'}`}>
+              <p className={`text-xs font-semibold mb-1 ${todayFlag ? 'text-blue-700' : 'text-slate-500'}`}>{format(day, 'd')}</p>
               {dayShifts.slice(0, 2).map(s => (
-                <button key={s.id} onClick={() => onShiftClick?.(s)}
-                  className={`text-xs rounded px-1 py-0.5 truncate text-left w-full mb-0.5 ${SHIFT_BG[s.shiftType] || 'bg-slate-100 text-slate-700'} ${STATUS_MUTE[s.status] || ''}`}>
+                <div key={s.id}
+                  className={`text-xs rounded px-1 py-0.5 truncate w-full mb-0.5 ${SHIFT_BG[s.shiftType] || 'bg-slate-100 text-slate-700'} ${STATUS_MUTE[s.status] || ''}`}>
                   {s.shiftType[0]} {format(new Date(s.startTime), 'HH:mm')}
-                </button>
+                </div>
               ))}
               {dayShifts.length > 2 && <span className="text-xs text-slate-400">+{dayShifts.length - 2}</span>}
             </div>

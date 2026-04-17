@@ -14,7 +14,7 @@ export async function GET(request) {
   const shifts = getShiftsByDate(date)
   const enriched = shifts.map(s => {
     const u = findUserById(s.userId)
-    return { ...s, userName: u?.name ?? 'Unknown', role: u?.role ?? '', employeeId: u?.employeeId ?? '' }
+    return { ...s, userName: u?.name ?? 'Unknown', role: u?.role ?? '', employeeId: u?.employeeId ?? '', department: u?.department ?? '' }
   })
 
   return NextResponse.json(enriched)
