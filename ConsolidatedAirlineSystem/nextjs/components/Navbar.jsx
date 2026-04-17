@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext'
 const STAFF_TABS = [
   { label: 'My Shifts',    href: '/dashboard', roles: ['Staff','Agent'] },
   { label: 'Catering',     href: '/catering',  roles: ['Staff','Agent','Manager','Admin'] },
+  { label: 'Cleanup',      href: '/cleanup',   roles: ['Staff','Agent','Manager','Admin'] },
   { label: 'Manager View', href: '/manager',   roles: ['Manager','Admin'] },
 ]
 
@@ -43,7 +44,7 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Right — user info + sign out when logged in, nothing when logged out */}
+          {/* Right — user info + sign out */}
           <div className="flex items-center gap-3 shrink-0">
             {!loading && user && (
               <>

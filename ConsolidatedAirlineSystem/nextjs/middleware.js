@@ -5,6 +5,7 @@ const PROTECTED = {
   '/dashboard': ['Staff', 'Agent'],
   '/manager':   ['Manager', 'Admin'],
   '/catering':  ['Staff', 'Agent', 'Manager', 'Admin'],
+  '/cleanup':   ['Staff', 'Agent', 'Manager', 'Admin'],
 }
 
 export async function middleware(request) {
@@ -28,5 +29,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/dashboard/:path*', '/manager/:path*', '/catering/:path*'],
+  matcher: ['/dashboard/:path*', '/manager/:path*', '/catering/:path*', '/cleanup/:path*'],
 }

@@ -16,10 +16,14 @@ export default function CateringPage() {
   const { user } = useAuth()
   const [flights, setFlights]         = useState([])
   const [loading, setLoading]         = useState(true)
-  const [selected, setSelected]       = useState(null)   // { flight, checklist, log }
+  const [selected, setSelected]       = useState(null)
   const [quantities, setQuantities]   = useState({})
   const [submitting, setSubmitting]   = useState(false)
-  const [shortfall, setShortfall]     = useState([])     // items below required
+  const [shortfall, setShortfall]     = useState([])
+  const [duties, setDuties]           = useState([])
+  const [dutyLoading, setDutyLoading] = useState(true)
+
+  const isManagerOrAdmin = user?.role === 'Manager' || user?.role === 'Admin'
 
   const fetchFlights = async () => {
     setLoading(true)
@@ -30,7 +34,21 @@ export default function CateringPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchFlights() }, [])
+  useEffect(() => {
+    const fetchDuty = async () => {
+      try {
+        const res = await fetch('/api/shifts/my-duty')
+        const data = await res.json()
+        setDuties(data.duties ?? [])
+      } catch { setDuties([]) }
+      finally { setDutyLoading(false) }
+    }
+    fetchDuty()
+  }, [])
+
+  useEffect(() => {
+    if (isManagerOrAdmin || duties.includes('Catering')) fetchFlights()
+  }, [duties, isManagerOrAdmin])
 
   const openFlight = async (flight) => {
     try {
@@ -62,13 +80,14 @@ export default function CateringPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: quantities }),
       })
-      const data = await res.json()
+      let data
+      try { data = await res.json() } catch { data = {} }
       if (res.status === 422) {
-        setShortfall(data.shortfall.map(s => ({ ...s, key: selected.checklist.find(c => c.label === s.label)?.key })))
+        setShortfall((data.shortfall ?? []).map(s => ({ ...s, key: selected.checklist.find(c => c.label === s.label)?.key })))
         toast.error('Some items are below required quantity!')
         return
       }
-      if (!res.ok) throw new Error(data.message)
+      if (!res.ok) throw new Error(data.message || 'Submission failed')
       toast.success('✅ Catering loaded successfully!')
       setSelected(null)
       fetchFlights()
@@ -82,6 +101,24 @@ export default function CateringPage() {
       acc[item.category].push(item)
       return acc
     }, {})
+
+  if (dutyLoading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="text-center"><div className="text-4xl mb-3">🍽️</div><p className="text-slate-500">Checking duty assignment...</p></div>
+    </div>
+  )
+
+  if (!isManagerOrAdmin && !duties.includes('Catering')) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="text-center max-w-md">
+        <div className="text-6xl mb-4">🚫</div>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">No Catering Duty Today</h2>
+        <p className="text-slate-500 text-sm">
+          You are not assigned to catering duty for today. Only staff with Catering duty can access this portal.
+        </p>
+      </div>
+    </div>
+  )
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[60vh]">
