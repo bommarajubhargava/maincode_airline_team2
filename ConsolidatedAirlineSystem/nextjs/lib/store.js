@@ -73,30 +73,10 @@ function generateShifts() {
     'usr-019','usr-020','usr-021','usr-022','usr-023',
   ]
 
-  // Duty assignment by employee index position (stable, not day-based)
-  // i%5==0 → Catering, i%5==1 → Cleanup, others → General
-  const getDuty = (staffIndex) => {
-    if (staffIndex % 5 === 0) return 'Catering'
-    if (staffIndex % 5 === 1) return 'Cleanup'
-    return 'General'
-  }
-
   const locations = [
     'Terminal 1 - Check-in','Terminal 2 - Gate A3','Terminal 3 - Boarding',
     'Gate B7','Gate C12','Runway Control','Baggage Claim',
     'Customer Service Desk','Security Checkpoint','VIP Lounge',
-  ]
-
-  const SLOTS = {
-    Morning:   { start: 6,  end: 14 },
-    Afternoon: { start: 14, end: 22 },
-    Night:     { start: 22, end: 30 },
-  }
-
-  const PAIRS = [
-    ['Morning', 'Afternoon'],
-    ['Morning', 'Night'],
-    ['Afternoon', 'Night'],
   ]
 
   let rng = 42
@@ -108,38 +88,32 @@ function generateShifts() {
 
   for (let day = -5; day < 30; day++) {
     const date    = new Date(today); date.setDate(today.getDate() + day)
-    const dayIdx  = day + 5
     const isPast  = day < 0
     const isToday = day === 0
 
-    const emp1Idx = (dayIdx * 2)     % staffIds.length
-    const emp2Idx = (dayIdx * 2 + 1) % staffIds.length
+    // Every employee gets 2 shifts per day: Morning (Catering) + Afternoon (Cleanup)
+    for (const userId of staffIds) {
+      for (const [shiftType, startH, endH, duty] of [
+        ['Morning',   6,  14, 'Catering'],
+        ['Afternoon', 14, 22, 'Cleanup'],
+      ]) {
+        const startTime = new Date(date); startTime.setHours(startH, 0, 0, 0)
+        const endTime   = new Date(date); endTime.setHours(endH, 0, 0, 0)
 
-    const [type1, type2] = PAIRS[dayIdx % PAIRS.length]
+        const pastRoll = rand(10)
+        const status = isPast
+          ? pastRoll < 7 ? 'Completed' : pastRoll < 9 ? 'Cancelled' : 'Swapped'
+          : isToday ? 'Scheduled'
+          : rand(10) < 2 ? 'Cancelled' : 'Scheduled'
 
-    for (const [staffArrIdx, userId, shiftType] of [
-      [emp1Idx, staffIds[emp1Idx], type1],
-      [emp2Idx, staffIds[emp2Idx], type2],
-    ]) {
-      const { start, end } = SLOTS[shiftType]
-      const startTime = new Date(date); startTime.setHours(start, 0, 0, 0)
-      const endTime   = new Date(date); endTime.setHours(end % 24, 0, 0, 0)
-      if (end >= 24) endTime.setDate(endTime.getDate() + 1)
-
-      const pastRoll = rand(10)
-      const status = isPast
-        ? pastRoll < 7 ? 'Completed' : pastRoll < 9 ? 'Cancelled' : 'Swapped'
-        : isToday ? 'Scheduled'
-        : rand(10) < 2 ? 'Cancelled' : 'Scheduled'
-
-      shifts.push({
-        id: `shft-${String(counter++).padStart(4,'0')}`,
-        userId, shiftType, status,
-        duty: getDuty(staffArrIdx),
-        startTime: startTime.toISOString(),
-        endTime:   endTime.toISOString(),
-        location:  locations[rand(locations.length)],
-      })
+        shifts.push({
+          id: `shft-${String(counter++).padStart(4,'0')}`,
+          userId, shiftType, status, duty,
+          startTime: startTime.toISOString(),
+          endTime:   endTime.toISOString(),
+          location:  locations[rand(locations.length)],
+        })
+      }
     }
   }
 
