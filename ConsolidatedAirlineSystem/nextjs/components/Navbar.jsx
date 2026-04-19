@@ -62,6 +62,11 @@ export default function Navbar() {
             <div>
               <span className="text-white font-bold text-lg leading-none">SkyWave Air</span>
               <span className="text-blue-200 text-xs block leading-none">Staff Portal</span>
+              {user?.airportId && (
+                <span className="text-xs font-bold text-white bg-blue-500/60 px-2 py-0.5 rounded-full mt-0.5 inline-block">
+                  {user.airportId} · {user.airportName}
+                </span>
+              )}
             </div>
           </Link>
 
