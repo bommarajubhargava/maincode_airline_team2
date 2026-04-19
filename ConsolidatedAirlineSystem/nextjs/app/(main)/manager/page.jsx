@@ -5,11 +5,12 @@ import { shiftService, complianceService } from '@/lib/api'
 import ShiftCard from '@/components/ShiftCard'
 import RequestQueue from '@/components/RequestQueue'
 import CompliancePanel from '@/components/CompliancePanel'
+import SchedulingEngine from '@/components/SchedulingEngine'
 import ShiftAssignPanel from '@/components/ShiftAssignPanel'
 import toast from 'react-hot-toast'
 import { format } from 'date-fns'
 
-const TABS = ['All Shifts', 'Requests', 'Staff List', 'Compliance', 'Flights Today', 'Assign Shifts']
+const TABS = ['All Shifts', 'Requests', 'Staff List', 'Compliance', 'Flights Today', 'Scheduling']
 
 export default function ManagerPage() {
   const { user } = useAuth()
@@ -23,6 +24,7 @@ export default function ManagerPage() {
   const [filterToDate, setFilterToDate]   = useState('')
   const [filterType, setFilterType]       = useState('All')
   const [filterStatus, setFilterStatus]   = useState('All')
+  const [appliedFilters, setAppliedFilters] = useState({ name: 'All', from: '', to: '', type: 'All', status: 'All' })
   const [editShift, setEditShift] = useState(null)
   const [editForm, setEditForm] = useState({})
   const [compliance, setCompliance] = useState(null)
@@ -96,16 +98,26 @@ export default function ManagerPage() {
 
   const pendingCount = requests.filter(r => r.status === 'Pending').length
 
+  const af = appliedFilters
   const filteredShifts = shifts.filter(s => {
     const dateStr = format(new Date(s.startTime), 'yyyy-MM-dd')
     return (
-      (filterName === 'All'     || s.userName === filterName) &&
-      (!filterFromDate          || dateStr >= filterFromDate) &&
-      (!filterToDate            || dateStr <= filterToDate) &&
-      (filterType   === 'All'   || s.shiftType === filterType) &&
-      (filterStatus === 'All'   || s.status === filterStatus)
+      (af.name   === 'All' || s.userName === af.name) &&
+      (!af.from            || dateStr >= af.from) &&
+      (!af.to              || dateStr <= af.to) &&
+      (af.type   === 'All' || s.shiftType === af.type) &&
+      (af.status === 'All' || s.status === af.status)
     )
   })
+
+  const hasActiveFilters = af.name !== 'All' || af.from || af.to || af.type !== 'All' || af.status !== 'All'
+
+  const handleSearch = () => setAppliedFilters({ name: filterName, from: filterFromDate, to: filterToDate, type: filterType, status: filterStatus })
+
+  const handleClearFilters = () => {
+    setFilterName('All'); setFilterFromDate(''); setFilterToDate(''); setFilterType('All'); setFilterStatus('All')
+    setAppliedFilters({ name: 'All', from: '', to: '', type: 'All', status: 'All' })
+  }
 
   if (loading) return <div className="flex items-center justify-center min-h-[60vh]"><div className="text-center"><div className="text-4xl mb-3">✈️</div><p className="text-slate-500">Loading...</p></div></div>
 
@@ -173,12 +185,24 @@ export default function ManagerPage() {
                   {['Scheduled','Completed','Cancelled','Swapped'].map(s => <option key={s}>{s}</option>)}
                 </select></div>
             </div>
-            {(filterName !== 'All' || filterFromDate || filterToDate || filterType !== 'All' || filterStatus !== 'All') && (
-              <button onClick={() => { setFilterName('All'); setFilterFromDate(''); setFilterToDate(''); setFilterType('All'); setFilterStatus('All') }}
-                className="text-xs text-blue-600 mt-3">Clear filters</button>
-            )}
+            <div className="flex items-center justify-between mt-3">
+              <div className="flex items-center gap-3">
+                <button onClick={handleSearch} className="btn-primary text-sm py-1.5 px-4">Search</button>
+                {hasActiveFilters && (
+                  <button onClick={handleClearFilters} className="text-xs text-blue-600 hover:text-blue-800">Clear filters</button>
+                )}
+              </div>
+              {hasActiveFilters && (
+                <p className="text-xs text-slate-400">
+                  {af.from && af.to ? `${af.from} → ${af.to}` : af.from ? `From ${af.from}` : af.to ? `Until ${af.to}` : ''}
+                </p>
+              )}
+            </div>
           </div>
-          <p className="text-sm text-slate-500 mb-3">{filteredShifts.length} shifts</p>
+          <p className="text-sm text-slate-500 mb-3">
+            {filteredShifts.length} shift{filteredShifts.length !== 1 ? 's' : ''}
+            {hasActiveFilters && <span className="text-slate-400"> (filtered from {shifts.length} total)</span>}
+          </p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {filteredShifts.map(s => (
               <div key={s.id} className="relative">
@@ -199,6 +223,8 @@ export default function ManagerPage() {
           onRefresh={fetchCompliance}
         />
       )}
+
+      {activeTab === 'Scheduling' && <SchedulingEngine />}
 
       {activeTab === 'Staff List' && (
         <div className="card overflow-x-auto">
