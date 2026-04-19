@@ -11,8 +11,9 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     fetch('/api/auth/me')
-      .then(r => r.json())
-      .then(data => setUser(data.user ?? null))
+      .then(r => r.json().catch(() => ({ user: null })))
+      .then(data => setUser(data?.user ?? null))
+      .catch(() => setUser(null))
       .finally(() => setLoading(false))
   }, [])
 
@@ -22,8 +23,11 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data.message)
+    let data
+    try { data = await res.json() } catch {
+      throw new Error('Server error — please restart the dev server and try again')
+    }
+    if (!res.ok) throw new Error(data?.message || 'Login failed')
     setUser(data.user)
     return data.user
   }, [])
@@ -31,8 +35,8 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     await fetch('/api/auth/logout', { method: 'POST' })
     setUser(null)
-    router.push('/')
-  }, [router])
+    window.location.href = '/'
+  }, [])
 
   const isRole = useCallback((...roles) => roles.includes(user?.role), [user])
 

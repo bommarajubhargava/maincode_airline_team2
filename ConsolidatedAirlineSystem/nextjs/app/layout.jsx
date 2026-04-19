@@ -3,13 +3,40 @@ import { AuthProvider } from '@/context/AuthContext'
 import { Toaster } from 'react-hot-toast'
 
 export const metadata = {
-  title: 'AirlineOps — Staff Portal',
-  description: 'Airline staff management system',
+  title: 'SkyWave Air — Staff Portal',
+  description: 'Airline staff management and scheduling system for SkyWave Air ground operations.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'SkyWave Air',
+  },
+  formatDetection: { telephone: false },
+  openGraph: {
+    type: 'website',
+    title: 'SkyWave Air — Staff Portal',
+    description: 'Airline staff management and scheduling system',
+  },
+}
+
+export const viewport = {
+  themeColor: '#1e40af',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 }
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
+      <head>
+        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
+        <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="SkyWave Air" />
+      </head>
       <body>
         <AuthProvider>
           <Toaster

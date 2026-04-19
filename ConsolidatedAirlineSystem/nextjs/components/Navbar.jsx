@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
+import { useEffect, useState } from 'react'
 
 const STAFF_TABS = [
   { label: 'My Shifts',      href: '/dashboard',       roles: ['Staff','Agent'] },
@@ -10,7 +11,7 @@ const STAFF_TABS = [
   // Admin-only tabs
   { label: 'Admin Dashboard', href: '/admin',             roles: ['Admin'] },
   { label: 'Flights Today',   href: '/admin/flights',     roles: ['Admin'] },
-  { label: 'Shift Overview',  href: '/admin/shifts',      roles: ['Admin'] },
+  { label: 'Shift Overview',  href: '/admin/shifts',      roles: [] }, // hidden from nav
   { label: 'Compliance',      href: '/admin/compliance',  roles: ['Admin'] },
   { label: 'Reports',         href: '/admin/reports',     roles: ['Admin'] },
 ]
@@ -18,6 +19,24 @@ const STAFF_TABS = [
 export default function Navbar() {
   const { user, logout, loading } = useAuth()
   const pathname = usePathname()
+  const [installPrompt, setInstallPrompt] = useState(null)
+  const [showInstallTip, setShowInstallTip] = useState(false)
+
+  useEffect(() => {
+    const handler = (e) => { e.preventDefault(); setInstallPrompt(e) }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  const handleInstall = async () => {
+    if (installPrompt) {
+      installPrompt.prompt()
+      const { outcome } = await installPrompt.userChoice
+      if (outcome === 'accepted') setInstallPrompt(null)
+    } else {
+      setShowInstallTip(t => !t)
+    }
+  }
 
   const tabs = STAFF_TABS.filter(t => user && t.roles.includes(user.role))
 
@@ -50,11 +69,33 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Right — user info + sign out */}
-          <div className="flex items-center gap-3 shrink-0">
+          {/* Right — install, docs, user info, sign out */}
+          <div className="flex items-center gap-2 shrink-0 relative">
+            {/* Install App button */}
+            <div className="relative">
+              <button onClick={handleInstall}
+                className="text-blue-100 hover:text-white text-xs border border-blue-500 hover:border-blue-300 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                📲 Install App
+              </button>
+              {showInstallTip && (
+                <div className="absolute right-0 top-10 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-50 text-xs text-slate-600">
+                  <p className="font-semibold text-slate-800 mb-2">Install on your device</p>
+                  <p className="mb-1"><strong>iPhone:</strong> Tap Share → "Add to Home Screen"</p>
+                  <p><strong>Android:</strong> Tap ⋮ menu → "Install app"</p>
+                  <button onClick={() => setShowInstallTip(false)} className="mt-3 text-blue-600 font-medium">Got it ✓</button>
+                </div>
+              )}
+            </div>
+
+            {/* Docs link */}
+            <Link href="/docs" target="_blank"
+              className="text-blue-100 hover:text-white text-xs border border-blue-500 hover:border-blue-300 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
+              📄 Docs
+            </Link>
+
             {!loading && user && (
               <>
-                <div className="text-right hidden sm:block">
+                <div className="text-right hidden sm:block ml-1">
                   <p className="text-white text-sm font-medium">{user.name}</p>
                   <p className="text-blue-200 text-xs">{user.role} · {user.employeeId}</p>
                   {user.airportId && (
