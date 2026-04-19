@@ -21,8 +21,10 @@ export default function Navbar() {
   const pathname = usePathname()
   const [installPrompt, setInstallPrompt] = useState(null)
   const [showInstallTip, setShowInstallTip] = useState(false)
+  const [isStandalone, setIsStandalone] = useState(false)
 
   useEffect(() => {
+    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches)
     const handler = (e) => { e.preventDefault(); setInstallPrompt(e) }
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
@@ -71,24 +73,25 @@ export default function Navbar() {
 
           {/* Right — install, docs, user info, sign out */}
           <div className="flex items-center gap-2 shrink-0 relative">
-            {/* Install App button */}
-            <div className="relative">
+            {/* Install App button — hidden when already running as installed PWA */}
+            {!isStandalone && <div className="relative">
               <button onClick={handleInstall}
                 className="text-blue-100 hover:text-white text-xs border border-blue-500 hover:border-blue-300 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
                 📲 Install App
               </button>
               {showInstallTip && (
-                <div className="absolute right-0 top-10 w-64 bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-50 text-xs text-slate-600">
+                <div className="absolute right-0 top-10 w-72 bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-50 text-xs text-slate-600">
                   <p className="font-semibold text-slate-800 mb-2">Install on your device</p>
+                  <p className="mb-1"><strong>Chrome / Edge (desktop):</strong> Click the install icon (⊕) in the address bar</p>
                   <p className="mb-1"><strong>iPhone:</strong> Tap Share → "Add to Home Screen"</p>
                   <p><strong>Android:</strong> Tap ⋮ menu → "Install app"</p>
                   <button onClick={() => setShowInstallTip(false)} className="mt-3 text-blue-600 font-medium">Got it ✓</button>
                 </div>
               )}
-            </div>
+            </div>}
 
             {/* Docs link */}
-            <Link href="/docs" target="_blank"
+            <Link href="/docs"
               className="text-blue-100 hover:text-white text-xs border border-blue-500 hover:border-blue-300 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
               📄 Docs
             </Link>
