@@ -6,7 +6,7 @@ import { getEmployees, safeEmployee, findEmployeeById } from '@/lib/store'
 export async function GET() {
   const session = await getSession()
   if (!session) return unauthorized()
-  if (!['Manager', 'Admin'].includes(session.role)) return forbidden()
+  if (!['Staff', 'Agent', 'Manager', 'Admin'].includes(session.role)) return forbidden()
 
   const employees = await getEmployees()
   let safe = employees.map(safeEmployee)
@@ -19,6 +19,13 @@ export async function GET() {
     if (airportId) {
       safe = safe.filter(e => e.airportId === airportId)
     }
+  }
+
+  if (session.role === 'Staff' || session.role === 'Agent') {
+    // Only return colleagues at same airport, exclude self
+    const self = await findEmployeeById(session.sub)
+    const airportId = self?.airport_id ?? session.airportId
+    safe = safe.filter(e => e.airportId === airportId && e.id !== session.sub)
   }
 
   return NextResponse.json(safe)
