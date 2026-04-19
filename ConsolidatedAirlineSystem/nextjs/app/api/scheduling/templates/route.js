@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { getSession, unauthorized } from '@/lib/auth'
 import { SHIFT_TEMPLATES, COVERAGE_RULES, CERT_LABELS, EMPLOYEE_CERTS } from '@/lib/scheduler'

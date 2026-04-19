@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { getSession, unauthorized } from '@/lib/auth'
 import { getShiftsByDate, getEmployees } from '@/lib/store'
 import { NextResponse } from 'next/server'

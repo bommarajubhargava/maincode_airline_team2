@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { getSession, unauthorized, badRequest } from '@/lib/auth'
 import { findFlightRecordById, submitFlightDuty, getFlightDutyLogs } from '@/lib/store'

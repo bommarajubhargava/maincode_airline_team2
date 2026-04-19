@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { getSession, unauthorized, forbidden } from '@/lib/auth'
 import { getAirportOverview } from '@/lib/store'

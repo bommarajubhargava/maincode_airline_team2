@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { getSession, unauthorized, notFound, badRequest } from '@/lib/auth'
 import { findFlightById, CLEANUP_TASKS } from '@/lib/flightData'
 import { getCleanupLog, addCleanupLog } from '@/lib/store'

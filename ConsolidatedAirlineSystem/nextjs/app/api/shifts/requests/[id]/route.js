@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { getSession, unauthorized, forbidden, notFound } from '@/lib/auth'
 import { findRequestById, deleteRequest } from '@/lib/store'

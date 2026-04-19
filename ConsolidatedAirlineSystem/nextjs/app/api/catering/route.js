@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { getSession, unauthorized } from '@/lib/auth'
 import { FLIGHTS } from '@/lib/flightData'
 import { getCateringLog } from '@/lib/store'
