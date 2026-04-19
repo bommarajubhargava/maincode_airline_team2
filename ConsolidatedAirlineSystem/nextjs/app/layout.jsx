@@ -31,8 +31,8 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <head>
         <script dangerouslySetInnerHTML={{ __html: `window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__installPrompt=e;});` }} />
-        <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
-        <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+        <link rel="icon" type="image/svg+xml" href="/icons/icon-192.png" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

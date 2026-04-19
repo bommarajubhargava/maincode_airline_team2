@@ -81,6 +81,16 @@ async function initDb() {
         shiftType TEXT NOT NULL, duty TEXT NOT NULL DEFAULT 'General',
         status TEXT NOT NULL DEFAULT 'Draft'
       )`,
+    `CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        senderId TEXT NOT NULL,
+        senderName TEXT NOT NULL,
+        type TEXT NOT NULL,
+        channelId TEXT,
+        recipientId TEXT,
+        content TEXT NOT NULL,
+        createdAt TEXT NOT NULL
+      )`,
   ], 'write')
   console.log('[initDb] tables created')
 
@@ -1115,4 +1125,66 @@ export async function deleteRoster(id) {
   await client.execute({ sql: 'DELETE FROM roster_shifts WHERE rosterId = ?', args: [id] })
   const { rowsAffected } = await client.execute({ sql: 'DELETE FROM rosters WHERE id = ?', args: [id] })
   return rowsAffected > 0
+}
+
+// ── Messages ──────────────────────────────────────────────────────────────────
+
+export async function getChannelMessages(channelId, limit = 50) {
+  await ready()
+  const { rows } = await client.execute({
+    sql: 'SELECT * FROM messages WHERE type = ? AND channelId = ? ORDER BY createdAt DESC LIMIT ?',
+    args: ['channel', channelId, limit],
+  })
+  return rows.reverse()
+}
+
+export async function getDirectMessages(userId1, userId2, limit = 50) {
+  await ready()
+  const { rows } = await client.execute({
+    sql: `SELECT * FROM messages WHERE type = 'direct'
+          AND ((senderId = ? AND recipientId = ?) OR (senderId = ? AND recipientId = ?))
+          ORDER BY createdAt DESC LIMIT ?`,
+    args: [userId1, userId2, userId2, userId1, limit],
+  })
+  return rows.reverse()
+}
+
+export async function sendMessage({ senderId, senderName, type, channelId, recipientId, content }) {
+  await ready()
+  const id = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+  const createdAt = new Date().toISOString()
+  await client.execute({
+    sql: 'INSERT INTO messages (id,senderId,senderName,type,channelId,recipientId,content,createdAt) VALUES (?,?,?,?,?,?,?,?)',
+    args: [id, senderId, senderName, type, channelId ?? null, recipientId ?? null, content, createdAt],
+  })
+  return { id, senderId, senderName, type, channelId, recipientId, content, createdAt }
+}
+
+export async function getUnreadCount(userId, since) {
+  await ready()
+  const { rows } = await client.execute({
+    sql: `SELECT COUNT(*) as cnt FROM messages
+          WHERE createdAt > ? AND senderId != ?
+          AND (
+            (type = 'direct' AND recipientId = ?)
+          )`,
+    args: [since, userId, userId],
+  })
+  return Number(rows[0]?.cnt ?? 0)
+}
+
+export async function getDMConversations(userId) {
+  await ready()
+  const { rows } = await client.execute({
+    sql: `SELECT DISTINCT
+            CASE WHEN senderId = ? THEN recipientId ELSE senderId END as peerId,
+            CASE WHEN senderId = ? THEN senderName ELSE senderName END as peerName,
+            MAX(createdAt) as lastAt
+          FROM messages
+          WHERE type = 'direct' AND (senderId = ? OR recipientId = ?)
+          GROUP BY peerId
+          ORDER BY lastAt DESC`,
+    args: [userId, userId, userId, userId],
+  })
+  return rows
 }

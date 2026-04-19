@@ -41,6 +41,12 @@ export const complianceService = {
   getUserReport: (userId) => fetcher(`/api/shifts/compliance/${userId}`),
 }
 
+export const chatService = {
+  getConversations: () => fetcher('/api/chat/conversations'),
+  getMessages: (type, id) => fetcher(`/api/chat/messages?type=${type}&${type === 'channel' ? 'channelId' : 'peerId'}=${id}`),
+  sendMessage: (dto) => fetcher('/api/chat/messages', { method: 'POST', body: JSON.stringify(dto) }),
+}
+
 export const schedulingService = {
   getTemplates:  ()                     => fetcher('/api/scheduling/templates'),
   getRosters:    ()                     => fetcher('/api/scheduling/roster'),

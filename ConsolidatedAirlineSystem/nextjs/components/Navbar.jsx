@@ -3,6 +3,8 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
+const ChatPanel = dynamic(() => import('@/components/ChatWidget'), { ssr: false })
 
 const STAFF_TABS = [
   { label: 'My Shifts',      href: '/dashboard',       roles: ['Staff','Agent'] },
@@ -53,6 +55,7 @@ export default function Navbar() {
   const tabs = STAFF_TABS.filter(t => user && t.roles.includes(user.role))
 
   return (
+    <>
     <nav className="bg-gradient-to-r from-blue-900 to-blue-700 shadow-lg">
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-center justify-between h-16">
@@ -111,6 +114,7 @@ export default function Navbar() {
               📄 Docs
             </Link>
 
+
             {!loading && user && (
               <>
                 <div className="text-right hidden sm:block ml-1">
@@ -131,5 +135,7 @@ export default function Navbar() {
         </div>
       </div>
     </nav>
+    {user && <ChatPanel />}
+    </>
   )
 }
