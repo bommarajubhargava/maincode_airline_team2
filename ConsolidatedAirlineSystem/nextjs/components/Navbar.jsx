@@ -25,16 +25,26 @@ export default function Navbar() {
 
   useEffect(() => {
     setIsStandalone(window.matchMedia('(display-mode: standalone)').matches)
-    const handler = (e) => { e.preventDefault(); setInstallPrompt(e) }
+    // Retrieve event if it fired before React mounted
+    if (window.__installPrompt) setInstallPrompt(window.__installPrompt)
+    const handler = (e) => {
+      e.preventDefault()
+      window.__installPrompt = e
+      setInstallPrompt(e)
+    }
     window.addEventListener('beforeinstallprompt', handler)
     return () => window.removeEventListener('beforeinstallprompt', handler)
   }, [])
 
   const handleInstall = async () => {
-    if (installPrompt) {
-      installPrompt.prompt()
-      const { outcome } = await installPrompt.userChoice
-      if (outcome === 'accepted') setInstallPrompt(null)
+    const prompt = installPrompt ?? window.__installPrompt
+    if (prompt) {
+      prompt.prompt()
+      const { outcome } = await prompt.userChoice
+      if (outcome === 'accepted') {
+        setInstallPrompt(null)
+        window.__installPrompt = null
+      }
     } else {
       setShowInstallTip(t => !t)
     }
