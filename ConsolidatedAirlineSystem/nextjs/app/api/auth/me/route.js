@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getSession } from '@/lib/auth'
-import { findUserById, safeUser } from '@/lib/mockUsers'
+import { findEmployeeById, safeEmployee } from '@/lib/store'
 
 export async function GET() {
-  const session = await getSession()
-  if (!session) return NextResponse.json({ user: null })
-  const user = findUserById(session.sub)
-  if (!user) return NextResponse.json({ user: null })
-  return NextResponse.json({ user: safeUser(user) })
+  try {
+    const session = await getSession()
+    if (!session) return NextResponse.json({ user: null })
+    const emp = await findEmployeeById(session.sub)
+    if (!emp) return NextResponse.json({ user: null })
+    return NextResponse.json({ user: safeEmployee(emp) })
+  } catch (err) {
+    console.error('[auth/me GET]', err)
+    return NextResponse.json({ user: null })
+  }
 }

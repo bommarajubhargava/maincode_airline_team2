@@ -274,7 +274,7 @@ export default function CompliancePanel({ data, loading, onRefresh }) {
             <UserComplianceCard
               key={row.user.id}
               row={row}
-              defaultOpen={expandAll || (row.criticalCount > 0 && filtered.length <= 5)}
+              defaultOpen={expandAll}
             />
           ))}
         </div>

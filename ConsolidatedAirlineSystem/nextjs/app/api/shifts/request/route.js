@@ -12,12 +12,12 @@ export async function POST(request) {
   if (!shiftId || !requestType || !reason?.trim())
     return badRequest('shiftId, requestType, and reason are required')
 
-  const req = addRequest({
+  const req = await addRequest({
     requestingUserId: session.sub,
     shiftId, requestType,
     reason: reason.trim(),
-    targetUserId:    body.targetUserId    ?? null,
-    targetShiftId:   body.targetShiftId   ?? null,
+    targetUserId:      body.targetUserId      ?? null,
+    targetShiftId:     body.targetShiftId     ?? null,
     proposedStartTime: body.proposedStartTime ?? null,
     proposedEndTime:   body.proposedEndTime   ?? null,
   })

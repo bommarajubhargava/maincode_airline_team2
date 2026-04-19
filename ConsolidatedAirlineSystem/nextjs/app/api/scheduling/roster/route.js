@@ -1,35 +1,25 @@
 import { NextResponse } from 'next/server'
 import { getSession, unauthorized, forbidden } from '@/lib/auth'
-import { getShifts, getRosters, createRoster, saveRosterShifts, findRosterById, getRosterShifts } from '@/lib/store'
-import { mockUsers, safeUser } from '@/lib/mockUsers'
+import { getShifts, getRosters, createRoster, saveRosterShifts, findRosterById, getRosterShifts, getEmployees, safeEmployee } from '@/lib/store'
 import { generateDraftRoster, checkRosterConflicts } from '@/lib/scheduler'
 
-const schedulable = () => mockUsers.filter(u => ['Staff', 'Agent'].includes(u.role)).map(safeUser)
+const schedulable = async () => {
+  const employees = await getEmployees()
+  return employees.filter(e => ['Staff', 'Agent'].includes(e.role)).map(safeEmployee)
+}
 
-/**
- * GET /api/scheduling/roster
- * Returns all saved rosters (Draft + Published) with shift counts.
- */
 export async function GET() {
   const session = await getSession()
   if (!session) return unauthorized()
   if (!['Manager', 'Admin'].includes(session.role)) return forbidden()
 
-  const rosters = getRosters().map(r => ({
-    ...r,
-    shiftCount: getRosterShifts(r.id).length,
-  }))
-
-  return NextResponse.json(rosters)
+  const rosters = await getRosters()
+  const withCounts = await Promise.all(
+    rosters.map(async r => ({ ...r, shiftCount: (await getRosterShifts(r.id)).length }))
+  )
+  return NextResponse.json(withCounts)
 }
 
-/**
- * POST /api/scheduling/roster
- * Body: { name, startDate, endDate, preview? }
- *
- * preview = true  → return draft + conflicts without persisting
- * preview = false → generate, save as Draft, return roster with conflicts
- */
 export async function POST(req) {
   const session = await getSession()
   if (!session) return unauthorized()
@@ -45,8 +35,7 @@ export async function POST(req) {
     return NextResponse.json({ message: 'startDate must be before endDate' }, { status: 400 })
   }
 
-  const existingShifts = getShifts()
-  const users          = schedulable()
+  const [existingShifts, users] = await Promise.all([getShifts(), schedulable()])
 
   let draftShifts, conflicts
   try {
@@ -60,34 +49,32 @@ export async function POST(req) {
   const criticalCount = conflicts.filter(c => c.severity === 'critical').length
   const warningCount  = conflicts.filter(c => c.severity === 'warning').length
 
-  // Preview mode: return draft without saving
   if (preview) {
     return NextResponse.json({
-      preview:   true,
+      preview: true,
       startDate, endDate,
-      shifts:    draftShifts,
+      shifts:  draftShifts,
       conflicts,
       summary: {
-        totalShifts:    draftShifts.length,
+        totalShifts:   draftShifts.length,
         criticalCount,
         warningCount,
-        usersAssigned:  [...new Set(draftShifts.map(s => s.userId))].length,
+        usersAssigned: [...new Set(draftShifts.map(s => s.userId))].length,
       },
     })
   }
 
-  // Save mode: persist roster + shifts
   if (!name?.trim()) {
     return NextResponse.json({ message: 'Roster name is required' }, { status: 400 })
   }
 
   try {
-    const roster = createRoster({ name: name.trim(), startDate, endDate, createdBy: session.sub ?? session.id ?? 'unknown' })
-    saveRosterShifts(roster.id, draftShifts)
+    const roster = await createRoster({ name: name.trim(), startDate, endDate, createdBy: session.sub ?? session.id ?? 'unknown' })
+    await saveRosterShifts(roster.id, draftShifts)
 
     return NextResponse.json({
-      roster: findRosterById(roster.id),
-      shifts: getRosterShifts(roster.id),
+      roster:   await findRosterById(roster.id),
+      shifts:   await getRosterShifts(roster.id),
       conflicts,
       summary: {
         totalShifts:   draftShifts.length,

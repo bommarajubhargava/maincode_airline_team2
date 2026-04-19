@@ -80,6 +80,8 @@ export default function DashboardPage() {
             <option value={7}>7 days</option>
             <option value={14}>14 days</option>
             <option value={30}>30 days</option>
+            <option value={60}>60 days</option>
+            <option value={90}>90 days</option>
           </select>
         </div>
       </div>
@@ -115,6 +117,7 @@ export default function DashboardPage() {
         <>
           <ShiftCalendar
             shifts={shifts}
+            days={days}
             onShiftClick={s => setDetailShift(s)}
             onDayClick={handleDayClick}
           />
@@ -151,90 +154,88 @@ export default function DashboardPage() {
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>No shifts scheduled.</div>
                   ) : (
                     <>
-                      {/* LEFT — 220px wide, 300px tall, absolute-positioned scroll area */}
-                      <div style={{ width: '220px', height: '300px', flexShrink: 0, borderRight: '1px solid #e2e8f0', position: 'relative' }}>
-                        {/* sub-header pinned at top */}
-                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '32px', display: 'flex', alignItems: 'center', padding: '0 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', zIndex: 1 }}>
-                          Employees ({dayShifts.length})
-                        </div>
-                        {/* scroll area fills exactly 300-32=268px, always */}
-                        <div style={{ position: 'absolute', top: '32px', left: 0, right: 0, bottom: 0, overflowY: 'scroll' }}>
-                          {dayShifts.map(s => (
-                            <div key={s.id} onClick={() => setPanelShift(s)}
-                              style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9', borderLeft: `4px solid ${panelShift?.id === s.id ? '#3b82f6' : 'transparent'}`, background: panelShift?.id === s.id ? '#eff6ff' : '#fff', cursor: 'pointer' }}>
-                              <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.userName || 'Staff Member'}</div>
-                              <div style={{ fontSize: '11px', color: '#64748b', marginTop: '1px' }}>{s.employeeId} · {s.role}</div>
-                              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{s.shiftType} · {format(new Date(s.startTime), 'HH:mm')}–{format(new Date(s.endTime), 'HH:mm')}</div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      {(() => {
+                        // Deduplicate: one row per employee, collect all their duties
+                        const empMap = {}
+                        for (const s of dayShifts) {
+                          if (!empMap[s.userId]) empMap[s.userId] = { ...s, duties: [] }
+                          if (s.duty) empMap[s.userId].duties.push(s.duty)
+                        }
+                        const uniqueEmps = Object.values(empMap)
+                        const selectedEmp = panelShift ? empMap[panelShift.userId] : null
 
-                      {/* RIGHT — flex fill, scrollable details */}
-                      <div style={{ flex: 1, height: '300px', overflowY: 'auto', padding: '16px' }}>
-                        {panelShift ? (
-                          <div className="space-y-4">
-                            <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
-                              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg">
-                                {(panelShift.userName || 'S')[0]}
+                        return (
+                          <>
+                            {/* LEFT — 220px wide, 300px tall, absolute-positioned scroll area */}
+                            <div style={{ width: '220px', height: '300px', flexShrink: 0, borderRight: '1px solid #e2e8f0', position: 'relative' }}>
+                              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '32px', display: 'flex', alignItems: 'center', padding: '0 12px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', zIndex: 1 }}>
+                                Employees ({uniqueEmps.length})
                               </div>
-                              <div>
-                                <p className="font-bold text-slate-800">{panelShift.userName || 'Staff Member'}</p>
-                                <p className="text-xs text-slate-500">{panelShift.employeeId} · {panelShift.role} · {panelShift.department}</p>
+                              <div style={{ position: 'absolute', top: '32px', left: 0, right: 0, bottom: 0, overflowY: 'scroll' }}>
+                                {uniqueEmps.map(s => {
+                                  const isSelected = panelShift?.userId === s.userId
+                                  return (
+                                    <div key={s.userId} onClick={() => setPanelShift(s)}
+                                      style={{ padding: '8px 12px', borderBottom: '1px solid #f1f5f9', borderLeft: `4px solid ${isSelected ? '#3b82f6' : 'transparent'}`, background: isSelected ? '#eff6ff' : '#fff', cursor: 'pointer' }}>
+                                      <div style={{ fontSize: '13px', fontWeight: 600, color: '#1e293b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.userName || 'Staff Member'}</div>
+                                      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '1px' }}>{s.employeeId} · {s.role}</div>
+                                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>{s.shiftType} · {format(new Date(s.startTime), 'HH:mm')}–{format(new Date(s.endTime), 'HH:mm')}</div>
+                                    </div>
+                                  )
+                                })}
                               </div>
                             </div>
-                            <div className={`rounded-xl border p-4 ${TYPE_BG[panelShift.shiftType] || 'bg-slate-50 border-slate-200'}`}>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xl">{TYPE_ICON[panelShift.shiftType] || '🕐'}</span>
-                                <span className="font-bold text-slate-800">{panelShift.shiftType} Shift</span>
-                              </div>
-                              <span className={STATUS_BADGE[panelShift.status] || 'badge-scheduled'}>{panelShift.status}</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="bg-slate-50 rounded-xl p-3">
-                                <p className="text-xs text-slate-400 font-medium mb-1">🕐 Time</p>
-                                <p className="text-sm font-semibold text-slate-700">{format(new Date(panelShift.startTime), 'HH:mm')} – {format(new Date(panelShift.endTime), 'HH:mm')}</p>
-                              </div>
-                              <div className="bg-slate-50 rounded-xl p-3">
-                                <p className="text-xs text-slate-400 font-medium mb-1">📍 Location</p>
-                                <p className="text-sm font-semibold text-slate-700 truncate">{panelShift.location}</p>
-                              </div>
-                              <div className="bg-slate-50 rounded-xl p-3">
-                                <p className="text-xs text-slate-400 font-medium mb-1">🪪 Shift ID</p>
-                                <p className="text-xs font-mono text-slate-500">{panelShift.id}</p>
-                              </div>
-                              {panelShift.duty && (
-                                <div className="bg-slate-50 rounded-xl p-3">
-                                  <p className="text-xs text-slate-400 font-medium mb-1">🎯 Duty</p>
-                                  <p className="text-sm font-semibold text-slate-700">{panelShift.duty}</p>
+
+                            {/* RIGHT — flex fill, scrollable details */}
+                            <div style={{ flex: 1, height: '300px', overflowY: 'auto', padding: '16px' }}>
+                              {selectedEmp ? (
+                                <div className="space-y-4">
+                                  <div className="flex items-center gap-3 pb-3 border-b border-slate-100">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg">
+                                      {(selectedEmp.userName || 'S')[0]}
+                                    </div>
+                                    <div>
+                                      <p className="font-bold text-slate-800">{selectedEmp.userName || 'Staff Member'}</p>
+                                      <p className="text-xs text-slate-500">{selectedEmp.employeeId} · {selectedEmp.role} · {selectedEmp.department}</p>
+                                    </div>
+                                  </div>
+                                  <div className={`rounded-xl border p-4 ${TYPE_BG[selectedEmp.shiftType] || 'bg-slate-50 border-slate-200'}`}>
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-xl">{TYPE_ICON[selectedEmp.shiftType] || '🕐'}</span>
+                                      <span className="font-bold text-slate-800">{selectedEmp.shiftType} Shift</span>
+                                    </div>
+                                    <span className={STATUS_BADGE[selectedEmp.status] || 'badge-scheduled'}>{selectedEmp.status}</span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-slate-50 rounded-xl p-3">
+                                      <p className="text-xs text-slate-400 font-medium mb-1">🕐 Time</p>
+                                      <p className="text-sm font-semibold text-slate-700">{format(new Date(selectedEmp.startTime), 'HH:mm')} – {format(new Date(selectedEmp.endTime), 'HH:mm')}</p>
+                                    </div>
+                                    <div className="bg-slate-50 rounded-xl p-3">
+                                      <p className="text-xs text-slate-400 font-medium mb-1">📍 Location</p>
+                                      <p className="text-sm font-semibold text-slate-700 truncate">{selectedEmp.location}</p>
+                                    </div>
+                                  </div>
+                                  {selectedEmp.duties.length > 0 && (
+                                    <div className="bg-slate-50 rounded-xl p-3">
+                                      <p className="text-xs text-slate-400 font-medium mb-2">🎯 Duties</p>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {selectedEmp.duties.map(d => (
+                                          <span key={d} className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700">{d}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', fontSize: '14px' }}>
+                                  Select an employee to view details
                                 </div>
                               )}
                             </div>
-                            {panelShift.userId === user?.id && panelShift.status === 'Scheduled' && (
-                              <div className="pt-3 border-t border-slate-100">
-                                <p className="text-xs text-slate-400 font-medium mb-3">REQUEST AN ACTION</p>
-                                <div className="grid grid-cols-3 gap-2">
-                                  {[
-                                    { type: 'Cancellation', icon: '🚫', label: 'Cancel', cls: 'border-red-200 bg-red-50 hover:bg-red-100 text-red-700' },
-                                    { type: 'Change',       icon: '✏️', label: 'Change', cls: 'border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700' },
-                                    { type: 'Swap',         icon: '🔄', label: 'Swap',   cls: 'border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700' },
-                                  ].map(a => (
-                                    <button key={a.type} onClick={() => setRequestForm({ shift: panelShift, requestType: a.type })}
-                                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-colors ${a.cls}`}>
-                                      <span className="text-xl">{a.icon}</span>
-                                      <span className="text-xs font-semibold">{a.label}</span>
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', fontSize: '14px' }}>
-                            Select an employee to view details
-                          </div>
-                        )}
-                      </div>
+                          </>
+                        )
+                      })()}
                     </>
                   )}
                 </div>

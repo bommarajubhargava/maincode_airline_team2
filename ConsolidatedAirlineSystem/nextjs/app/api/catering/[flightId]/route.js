@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
   return NextResponse.json({
     flight,
     checklist: getChecklist(flight),
-    log: getCateringLog(flight.id) ?? null,
+    log: (await getCateringLog(flight.id)) ?? null,
   })
 }
 
@@ -37,7 +37,7 @@ export async function POST(request, { params }) {
   }
 
   try {
-    const log = addCateringLog({ flightId: flight.id, agentId: session.sub, items })
+    const log = await addCateringLog({ flightId: flight.id, agentId: session.sub, items })
     return NextResponse.json(log, { status: 201 })
   } catch (err) {
     return NextResponse.json({ message: err.message }, { status: 500 })

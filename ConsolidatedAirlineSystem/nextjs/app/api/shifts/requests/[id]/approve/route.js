@@ -8,27 +8,27 @@ export async function PUT(request, { params }) {
   if (!session) return unauthorized()
   if (!['Manager','Admin'].includes(session.role)) return forbidden()
 
-  const req = findRequestById(params.id)
+  const req = await findRequestById(params.id)
   if (!req) return notFound('Request not found')
   if (req.status !== 'Pending') return badRequest('Request is not pending')
 
   const { managerComment = '' } = await request.json()
 
-  const shift = findShiftById(req.shiftId)
+  const shift = await findShiftById(req.shiftId)
   if (shift) {
     if (req.requestType === 'Cancellation') {
-      updateShift(shift.id, { status: 'Cancelled' })
+      await updateShift(shift.id, { status: 'Cancelled' })
     } else if (req.requestType === 'Change' && req.proposedStartTime) {
-      updateShift(shift.id, { startTime: req.proposedStartTime, endTime: req.proposedEndTime ?? shift.endTime })
+      await updateShift(shift.id, { startTime: req.proposedStartTime, endTime: req.proposedEndTime ?? shift.endTime })
     } else if (req.requestType === 'Swap' && req.targetShiftId) {
-      const target = findShiftById(req.targetShiftId)
+      const target = await findShiftById(req.targetShiftId)
       if (target) {
-        updateShift(shift.id,  { userId: target.userId, status: 'Swapped' })
-        updateShift(target.id, { userId: shift.userId,  status: 'Swapped' })
+        await updateShift(shift.id,  { userId: target.userId, status: 'Swapped' })
+        await updateShift(target.id, { userId: shift.userId,  status: 'Swapped' })
       }
     }
   }
 
-  const updated = updateRequest(params.id, { status: 'Approved', managerComment })
-  return NextResponse.json(enrichRequest(updated))
+  const updated = await updateRequest(params.id, { status: 'Approved', managerComment })
+  return NextResponse.json(await enrichRequest(updated))
 }

@@ -26,7 +26,8 @@ export default function HomePage() {
     try {
       const u = await login(email, password)
       toast.success(`Welcome back, ${u.name}!`)
-      router.push(['Manager', 'Admin'].includes(u.role) ? '/manager' : '/dashboard')
+      const dest = u.role === 'Admin' ? '/admin' : u.role === 'Manager' ? '/manager' : '/dashboard'
+      window.location.href = dest
     } catch (err) {
       toast.error(err.message)
     } finally {

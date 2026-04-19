@@ -13,7 +13,7 @@ export async function GET(request, { params }) {
   return NextResponse.json({
     flight,
     tasks: CLEANUP_TASKS,
-    log: getCleanupLog(flight.id) ?? null,
+    log: (await getCleanupLog(flight.id)) ?? null,
   })
 }
 
@@ -35,7 +35,7 @@ export async function POST(request, { params }) {
   if (tasks === undefined || tasks === null) return badRequest('tasks required')
 
   try {
-    const log = addCleanupLog({ flightId: flight.id, agentId: session.sub, tasks })
+    const log = await addCleanupLog({ flightId: flight.id, agentId: session.sub, tasks })
     return NextResponse.json(log, { status: 201 })
   } catch (err) {
     return NextResponse.json({ message: err.message }, { status: 500 })

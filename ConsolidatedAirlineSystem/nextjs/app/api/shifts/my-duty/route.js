@@ -6,6 +6,6 @@ export async function GET() {
   const session = await getSession()
   if (!session) return unauthorized()
 
-  const duties = getTodayDuties(session.sub)
+  const duties = await getTodayDuties(session.sub)
   return NextResponse.json({ duties })
 }

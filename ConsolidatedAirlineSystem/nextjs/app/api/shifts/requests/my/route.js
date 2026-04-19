@@ -7,7 +7,7 @@ export async function GET() {
   const session = await getSession()
   if (!session) return unauthorized()
 
-  return NextResponse.json(
-    getRequests().filter(r => r.requestingUserId === session.sub).map(enrichRequest)
-  )
+  const requests = await getRequests()
+  const mine     = requests.filter(r => r.requestingUserId === session.sub)
+  return NextResponse.json(await Promise.all(mine.map(enrichRequest)))
 }

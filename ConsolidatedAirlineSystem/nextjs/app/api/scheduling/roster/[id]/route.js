@@ -1,27 +1,24 @@
 import { NextResponse } from 'next/server'
 import { getSession, unauthorized, forbidden } from '@/lib/auth'
-import { getShifts, findRosterById, getRosterShifts, deleteRoster } from '@/lib/store'
-import { mockUsers, safeUser } from '@/lib/mockUsers'
+import { getShifts, findRosterById, getRosterShifts, deleteRoster, getEmployees, safeEmployee } from '@/lib/store'
 import { checkRosterConflicts } from '@/lib/scheduler'
 
-/**
- * GET /api/scheduling/roster/[id]
- * Returns a saved roster with its shifts, conflicts, and user details.
- */
 export async function GET(req, { params }) {
   const session = await getSession()
   if (!session) return unauthorized()
   if (!['Manager', 'Admin'].includes(session.role)) return forbidden()
 
-  const roster = findRosterById(params.id)
+  const roster = await findRosterById(params.id)
   if (!roster) return NextResponse.json({ message: 'Roster not found' }, { status: 404 })
 
-  const rosterShifts   = getRosterShifts(roster.id)
-  const existingShifts = getShifts()
-  const users          = mockUsers.filter(u => ['Staff', 'Agent'].includes(u.role)).map(safeUser)
-  const conflicts      = checkRosterConflicts(rosterShifts, existingShifts, users, roster.startDate, roster.endDate)
+  const [rosterShifts, existingShifts, allEmployees] = await Promise.all([
+    getRosterShifts(roster.id),
+    getShifts(),
+    getEmployees(),
+  ])
+  const users     = allEmployees.filter(e => ['Staff', 'Agent'].includes(e.role)).map(safeEmployee)
+  const conflicts = checkRosterConflicts(rosterShifts, existingShifts, users, roster.startDate, roster.endDate)
 
-  // Enrich shifts with user info
   const userMap = Object.fromEntries(users.map(u => [u.id, u]))
   const enriched = rosterShifts.map(s => ({
     ...s,
@@ -43,21 +40,17 @@ export async function GET(req, { params }) {
   })
 }
 
-/**
- * DELETE /api/scheduling/roster/[id]
- * Deletes a Draft roster (Published rosters cannot be deleted).
- */
 export async function DELETE(req, { params }) {
   const session = await getSession()
   if (!session) return unauthorized()
   if (!['Manager', 'Admin'].includes(session.role)) return forbidden()
 
-  const roster = findRosterById(params.id)
+  const roster = await findRosterById(params.id)
   if (!roster) return NextResponse.json({ message: 'Roster not found' }, { status: 404 })
   if (roster.status === 'Published') {
     return NextResponse.json({ message: 'Published rosters cannot be deleted' }, { status: 409 })
   }
 
-  deleteRoster(params.id)
+  await deleteRoster(params.id)
   return NextResponse.json({ message: 'Roster deleted' })
 }

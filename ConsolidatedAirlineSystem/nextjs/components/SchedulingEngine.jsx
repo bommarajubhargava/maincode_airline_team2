@@ -243,6 +243,85 @@ function SavedRosterCard({ roster, onView, onDelete, onPublish }) {
   )
 }
 
+// ── Publish Modal ─────────────────────────────────────────────────────────────
+
+function PublishModal({ modal, onConfirm, onCancel, publishing }) {
+  if (!modal) return null
+  const { type, rosterName, message, criticalCount, warningCount } = modal
+  const isConflict = type === 'conflict'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+        {/* Header */}
+        <div className={`px-6 py-4 ${isConflict ? 'bg-red-50 border-b border-red-100' : 'bg-blue-50 border-b border-blue-100'}`}>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{isConflict ? '⚠️' : '🚀'}</span>
+            <div>
+              <h3 className="font-bold text-slate-800 text-base">
+                {isConflict ? 'Critical Conflicts Detected' : 'Publish Roster'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">"{rosterName}"</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="px-6 py-5 space-y-4">
+          {!isConflict && (
+            <p className="text-sm text-slate-600">
+              This will add all shifts from this roster to the <span className="font-semibold text-slate-800">live schedule</span>. Employees will see their shifts in the calendar immediately.
+            </p>
+          )}
+
+          {isConflict && (
+            <>
+              <div className="flex gap-3">
+                {criticalCount > 0 && (
+                  <div className="flex-1 bg-red-50 border border-red-100 rounded-xl px-4 py-3 text-center">
+                    <p className="text-2xl font-bold text-red-600">{criticalCount}</p>
+                    <p className="text-xs text-red-500 font-medium">Critical</p>
+                  </div>
+                )}
+                {warningCount > 0 && (
+                  <div className="flex-1 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3 text-center">
+                    <p className="text-2xl font-bold text-amber-600">{warningCount}</p>
+                    <p className="text-xs text-amber-500 font-medium">Warnings</p>
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-slate-600">{message}</p>
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3">
+                <p className="text-xs font-semibold text-red-700 mb-1">⚠️ Force publish warning</p>
+                <p className="text-xs text-red-600">Publishing despite critical conflicts may result in understaffed shifts, compliance violations, or scheduling errors. Proceed only if you have manually resolved these issues.</p>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 pb-5 flex gap-3 justify-end">
+          <button onClick={onCancel} className="btn-secondary text-sm px-5 py-2">
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={publishing}
+            className={`text-sm px-5 py-2 rounded-xl font-semibold transition-colors ${
+              isConflict
+                ? 'bg-red-600 text-white hover:bg-red-700 disabled:opacity-50'
+                : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
+            }`}
+          >
+            {publishing ? 'Publishing…' : isConflict ? '⚠️ Force Publish' : '🚀 Publish Roster'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function SchedulingEngine() {
@@ -263,6 +342,9 @@ export default function SchedulingEngine() {
 
   const [templates,      setTemplates]      = useState(null)
   const [templatesLoading, setTemplatesLoading] = useState(false)
+
+  const [publishModal,   setPublishModal]   = useState(null)   // { type, rosterName, message, criticalCount, warningCount, roster, force }
+  const [publishing,     setPublishing]     = useState(false)
 
   // Load coverage rules on mount
   useEffect(() => {
@@ -336,7 +418,6 @@ export default function SchedulingEngine() {
   }
 
   const handleDeleteRoster = async (id) => {
-    if (!confirm('Delete this draft roster?')) return
     try {
       const res = await fetch(`/api/scheduling/roster/${id}`, { method: 'DELETE' })
       if (!res.ok) throw new Error((await res.json()).message)
@@ -346,10 +427,18 @@ export default function SchedulingEngine() {
     } catch (err) { toast.error(err.message) }
   }
 
-  const handlePublish = async (roster, force = false) => {
+  const handlePublish = (roster) => {
     const r = roster ?? viewRoster?.roster
     if (!r) return
-    if (!force && !confirm(`Publish roster "${r.name}"? This will add all shifts to the live schedule.`)) return
+    setPublishModal({ type: 'confirm', rosterName: r.name, roster: r, force: false })
+  }
+
+  const handlePublishConfirm = async () => {
+    if (!publishModal) return
+    const { roster, force } = publishModal
+    const r = roster ?? viewRoster?.roster
+    if (!r) return
+    setPublishing(true)
     try {
       const res  = await fetch(`/api/scheduling/roster/${r.id}/publish`, {
         method: 'POST',
@@ -359,17 +448,31 @@ export default function SchedulingEngine() {
       const data = await res.json()
       if (!res.ok) {
         if (res.status === 422 && !force) {
-          const ok = confirm(`${data.message}\n\nForce publish anyway?`)
-          if (ok) return handlePublish(roster, true)
-        } else {
-          throw new Error(data.message)
+          const critical = (data.conflicts ?? []).filter(c => c.severity === 'critical').length
+          const warnings = (data.conflicts ?? []).filter(c => c.severity === 'warning').length
+          setPublishModal({
+            type: 'conflict',
+            rosterName: r.name,
+            message: data.message,
+            criticalCount: critical,
+            warningCount: warnings,
+            roster: r,
+            force: true,
+          })
+          return
         }
-        return
+        throw new Error(data.message)
       }
+      setPublishModal(null)
       toast.success(`Published ${data.publishedShifts} shifts to live schedule`)
       fetchRosters()
       if (viewRoster) handleViewRoster(data.roster)
-    } catch (err) { toast.error(err.message) }
+    } catch (err) {
+      setPublishModal(null)
+      toast.error(err.message)
+    } finally {
+      setPublishing(false)
+    }
   }
 
   // Build user map from templates
@@ -390,6 +493,13 @@ export default function SchedulingEngine() {
 
   return (
     <div className="space-y-5">
+      <PublishModal
+        modal={publishModal}
+        onConfirm={handlePublishConfirm}
+        onCancel={() => { if (!publishing) setPublishModal(null) }}
+        publishing={publishing}
+      />
+
       {/* Sub-tabs */}
       <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
         {[{ k: 'generate', l: '⚙️ Generate Roster' }, { k: 'rules', l: '📋 Coverage Rules' }, { k: 'saved', l: '🗂️ Saved Rosters' }].map(t => (

@@ -8,12 +8,11 @@ export async function PUT(request, { params }) {
   if (!session) return unauthorized()
   if (!['Manager','Admin'].includes(session.role)) return forbidden()
 
-  const req = findRequestById(params.id)
+  const req = await findRequestById(params.id)
   if (!req) return notFound('Request not found')
   if (req.status !== 'Pending') return badRequest('Request is not pending')
 
   const { managerComment = '' } = await request.json()
-  // Status set to 'Cancelled' when manager rejects
-  const updated = updateRequest(params.id, { status: 'Cancelled', managerComment })
-  return NextResponse.json(enrichRequest(updated))
+  const updated = await updateRequest(params.id, { status: 'Cancelled', managerComment })
+  return NextResponse.json(await enrichRequest(updated))
 }

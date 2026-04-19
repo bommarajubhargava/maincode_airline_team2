@@ -1,0 +1,11 @@
+import { NextResponse } from 'next/server'
+import { getSession, unauthorized } from '@/lib/auth'
+import { getAirports } from '@/lib/store'
+
+export async function GET() {
+  const session = await getSession()
+  if (!session) return unauthorized()
+
+  const airports = await getAirports()
+  return NextResponse.json(airports)
+}

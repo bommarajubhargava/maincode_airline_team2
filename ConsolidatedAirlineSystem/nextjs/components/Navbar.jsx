@@ -4,10 +4,15 @@ import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
 
 const STAFF_TABS = [
-  { label: 'My Shifts',    href: '/dashboard', roles: ['Staff','Agent'] },
-  { label: 'Catering',     href: '/catering',  roles: ['Staff','Agent','Manager','Admin'] },
-  { label: 'Cleanup',      href: '/cleanup',   roles: ['Staff','Agent','Manager','Admin'] },
-  { label: 'Manager View', href: '/manager',   roles: ['Manager','Admin'] },
+  { label: 'My Shifts',      href: '/dashboard',       roles: ['Staff','Agent'] },
+  { label: 'Flight Duties',  href: '/flights',          roles: ['Staff','Agent','Manager'] },
+  { label: 'Manager View',   href: '/manager',          roles: ['Manager'] },
+  // Admin-only tabs
+  { label: 'Admin Dashboard', href: '/admin',             roles: ['Admin'] },
+  { label: 'Flights Today',   href: '/admin/flights',     roles: ['Admin'] },
+  { label: 'Shift Overview',  href: '/admin/shifts',      roles: ['Admin'] },
+  { label: 'Compliance',      href: '/admin/compliance',  roles: ['Admin'] },
+  { label: 'Reports',         href: '/admin/reports',     roles: ['Admin'] },
 ]
 
 export default function Navbar() {
@@ -37,7 +42,8 @@ export default function Navbar() {
               </Link>
               {tabs.map(tab => (
                 <Link key={tab.href} href={tab.href}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${pathname === tab.href ? 'bg-white text-blue-800' : 'text-blue-100 hover:bg-blue-800'}`}>
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${pathname === tab.href ? 'bg-white text-blue-800' : 'text-blue-100 hover:bg-blue-800'}`}
+                  aria-current={pathname === tab.href ? 'page' : undefined}>
                   {tab.label}
                 </Link>
               ))}
@@ -51,6 +57,11 @@ export default function Navbar() {
                 <div className="text-right hidden sm:block">
                   <p className="text-white text-sm font-medium">{user.name}</p>
                   <p className="text-blue-200 text-xs">{user.role} · {user.employeeId}</p>
+                  {user.airportId && (
+                    <p className="text-xs font-semibold bg-blue-500 text-white px-2 py-0.5 rounded-full mt-0.5 inline-block">
+                      {user.airportId} · {user.airportName}
+                    </p>
+                  )}
                 </div>
                 <button onClick={logout} className="text-blue-100 hover:text-white text-sm border border-blue-400 hover:border-white px-3 py-1.5 rounded-lg transition-colors">
                   Sign Out

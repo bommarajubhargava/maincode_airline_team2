@@ -7,10 +7,10 @@ export async function GET() {
   const session = await getSession()
   if (!session) return unauthorized()
 
-  const flights = FLIGHTS.map(f => ({
+  const flights = await Promise.all(FLIGHTS.map(async f => ({
     ...f,
-    log: getCleanupLog(f.id) ?? null,
-  }))
+    log: (await getCleanupLog(f.id)) ?? null,
+  })))
 
   return NextResponse.json(flights)
 }
