@@ -2,7 +2,6 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext'
-import { useEffect, useState } from 'react'
 
 const STAFF_TABS = [
   { label: 'My Shifts',      href: '/dashboard',       roles: ['Staff','Agent'] },
@@ -11,7 +10,7 @@ const STAFF_TABS = [
   // Admin-only tabs
   { label: 'Admin Dashboard', href: '/admin',             roles: ['Admin'] },
   { label: 'Flights Today',   href: '/admin/flights',     roles: ['Admin'] },
-  { label: 'Shift Overview',  href: '/admin/shifts',      roles: [] }, // hidden from nav
+  { label: 'Shift Overview',  href: '/admin/shifts',      roles: ['Admin'] },
   { label: 'Compliance',      href: '/admin/compliance',  roles: ['Admin'] },
   { label: 'Reports',         href: '/admin/reports',     roles: ['Admin'] },
 ]
@@ -19,36 +18,6 @@ const STAFF_TABS = [
 export default function Navbar() {
   const { user, logout, loading } = useAuth()
   const pathname = usePathname()
-  const [installPrompt, setInstallPrompt] = useState(null)
-  const [showInstallTip, setShowInstallTip] = useState(false)
-  const [isStandalone, setIsStandalone] = useState(false)
-
-  useEffect(() => {
-    setIsStandalone(window.matchMedia('(display-mode: standalone)').matches)
-    // Retrieve event if it fired before React mounted
-    if (window.__installPrompt) setInstallPrompt(window.__installPrompt)
-    const handler = (e) => {
-      e.preventDefault()
-      window.__installPrompt = e
-      setInstallPrompt(e)
-    }
-    window.addEventListener('beforeinstallprompt', handler)
-    return () => window.removeEventListener('beforeinstallprompt', handler)
-  }, [])
-
-  const handleInstall = async () => {
-    const prompt = installPrompt ?? window.__installPrompt
-    if (prompt) {
-      prompt.prompt()
-      const { outcome } = await prompt.userChoice
-      if (outcome === 'accepted') {
-        setInstallPrompt(null)
-        window.__installPrompt = null
-      }
-    } else {
-      setShowInstallTip(t => !t)
-    }
-  }
 
   const tabs = STAFF_TABS.filter(t => user && t.roles.includes(user.role))
 
@@ -81,34 +50,11 @@ export default function Navbar() {
             </div>
           )}
 
-          {/* Right — install, docs, user info, sign out */}
-          <div className="flex items-center gap-2 shrink-0 relative">
-            {/* Install App button — hidden when already running as installed PWA */}
-            {!isStandalone && <div className="relative">
-              <button onClick={handleInstall}
-                className="text-blue-100 hover:text-white text-xs border border-blue-500 hover:border-blue-300 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
-                📲 Install App
-              </button>
-              {showInstallTip && (
-                <div className="absolute right-0 top-10 w-72 bg-white rounded-xl shadow-xl border border-slate-200 p-4 z-50 text-xs text-slate-600">
-                  <p className="font-semibold text-slate-800 mb-2">Install on your device</p>
-                  <p className="mb-1"><strong>Chrome / Edge (desktop):</strong> Click the install icon (⊕) in the address bar</p>
-                  <p className="mb-1"><strong>iPhone:</strong> Tap Share → "Add to Home Screen"</p>
-                  <p><strong>Android:</strong> Tap ⋮ menu → "Install app"</p>
-                  <button onClick={() => setShowInstallTip(false)} className="mt-3 text-blue-600 font-medium">Got it ✓</button>
-                </div>
-              )}
-            </div>}
-
-            {/* Docs link */}
-            <Link href="/docs"
-              className="text-blue-100 hover:text-white text-xs border border-blue-500 hover:border-blue-300 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
-              📄 Docs
-            </Link>
-
+          {/* Right — user info + sign out */}
+          <div className="flex items-center gap-3 shrink-0">
             {!loading && user && (
               <>
-                <div className="text-right hidden sm:block ml-1">
+                <div className="text-right hidden sm:block">
                   <p className="text-white text-sm font-medium">{user.name}</p>
                   <p className="text-blue-200 text-xs">{user.role} · {user.employeeId}</p>
                   {user.airportId && (
